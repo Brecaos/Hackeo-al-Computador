@@ -1,0 +1,668 @@
+/* Operación Perla Negra · Actividad 04 — versión HTML, CSS y JS puro */
+(function () {
+  "use strict";
+
+  const PASSWORD = "Perla#27!";
+  const ACCESS_ID = "D-27";
+
+  const CLUES = [
+    "La contraseña tiene 9 caracteres.",
+    "Está relacionada con el nombre de la joya y comienza con una letra mayúscula.",
+    "Contiene el número 27 y un carácter especial que separa la palabra del número.",
+    "El último carácter es un signo de exclamación.",
+  ];
+  const CLUE_MILESTONES = [2, 4, 6, 8];
+
+  const FILES = [
+    { id: "jewel", index: "01", name: "Registro de la joya", meta: "ARCHIVO · INV. 27" },
+    { id: "transfer", index: "02", name: "Registro de traslado", meta: "BITÁCORA · BLOQUE D" },
+    {
+      id: "blueprint",
+      index: "03",
+      name: "Plano maestro",
+      meta: "UBICACIÓN · X: 9 / Y: −15",
+      featured: true,
+    },
+  ];
+
+  const USERS = [
+    { name: "Adrián Valcárcel", initials: "AV", role: "CURADOR" },
+    { name: "Clara Montalvo", initials: "CM", role: "INVITADA" },
+    { name: "Otro usuario", initials: "···", role: "CUENTA LOCAL" },
+  ];
+
+  const state = {
+    screen: "briefing",
+    selectedUser: USERS[0],
+    accessId: "",
+    password: "",
+    attempts: 0,
+    error: null, // "id" | "password" | "both" | null
+    helperOpen: false,
+    activeFile: null,
+    viewedFiles: [],
+  };
+
+  let authTimer = null;
+  let pendingFocus = null; // id del elemento que debe recibir el foco tras render
+  const root = document.getElementById("root");
+
+  /* ---------- Utilidades ---------- */
+
+  const pad = (n) => String(n).padStart(2, "0");
+
+  const esc = (text) =>
+    String(text).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    })[c]);
+
+  const icon = {
+    arrow(direction = "right") {
+      return `<svg aria-hidden="true" class="${direction === "left" ? "rotate-180" : ""}" fill="none" height="16" viewBox="0 0 24 16" width="24"><path d="M1 8h21M15 1l7 7-7 7" stroke="currentColor" stroke-width="1.5"/></svg>`;
+    },
+    lock(open = false) {
+      return `<svg aria-hidden="true" fill="none" height="28" viewBox="0 0 28 28" width="28"><rect height="13" rx="1" stroke="currentColor" stroke-width="1.2" width="18" x="5" y="12"/><path d="${open ? "M10 12V9a5 5 0 0 1 9-3" : "M9 12V9a5 5 0 0 1 10 0v3"}" stroke="currentColor" stroke-width="1.2"/><circle cx="14" cy="18.5" fill="currentColor" r="1.3"/></svg>`;
+    },
+    folder() {
+      return `<svg aria-hidden="true" fill="none" height="27" viewBox="0 0 32 27" width="32"><path d="M1 6.5h12l3-4h15v23H1v-19Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.2"/><path d="M1 9.5h30" stroke="currentColor" stroke-width="1.2"/></svg>`;
+    },
+  };
+
+  function actionButton(content, action, disabled = false) {
+    return `<button class="action-button" data-action="${action}"${disabled ? " disabled" : ""} type="button">${content}</button>`;
+  }
+
+  function frame({ body, label, step, compact = false }) {
+    return `
+      <main class="app-shell">
+        <div class="console-frame ${compact ? "console-frame--compact" : ""}">
+          <header class="system-bar">
+            <div class="brand-lockup">
+              <span class="brand-mark brand-compass" aria-hidden="true"><svg class="compass-svg" viewBox="0 0 496 486" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M243.388 26.2908C243.324 26.6457 243.26 26.9996 243.196 27.3525C243.26 27.0014 243.324 26.644 243.388 26.2908ZM313.634 273.931C313.634 273.931 313.635 273.936 313.639 273.943C313.632 273.937 313.634 273.931 313.634 273.931ZM128.037 347.465C127.911 347.644 127.785 347.824 127.658 348.004C127.784 347.825 127.912 347.643 128.037 347.465ZM278.828 213.656C278.98 213.518 279.134 213.379 279.289 213.24C279.136 213.378 278.979 213.519 278.828 213.656ZM29.8469 246.454C29.7856 246.445 29.7238 246.435 29.6616 246.426C29.7212 246.435 29.7882 246.445 29.8469 246.454ZM218.945 242.866C219.159 242.871 219.373 242.877 219.587 242.883C219.374 242.877 219.158 242.871 218.945 242.866ZM255.005 249.869L255.013 249.877L255.022 249.885C255.228 250.091 255.398 250.26 255.523 250.384L270.153 264.59C270.678 265.103 271.498 265.936 272.487 266.941M276.418 319.162C276.322 319.714 276.225 320.266 276.129 320.818C276.045 321.294 275.962 321.771 275.878 322.247C275.962 321.772 276.045 321.293 276.129 320.818C276.225 320.267 276.322 319.712 276.418 319.162ZM341.651 328.961C341.652 328.963 341.649 328.96 341.651 328.961Z" fill-rule="evenodd" clip-rule="evenodd" fill="currentColor"/>
+<path d="M250.977 12.6076C250.714 10.8966 250.382 9.22824 250.051 7.56363C249.556 5.07713 249.063 2.59904 248.802 0C246.688 7.97728 244.985 17.4254 243.388 26.2908C242.876 29.1291 242.375 31.9098 241.875 34.5613L230.32 94.7396C229.764 97.657 229.192 101.041 228.598 104.556C227.46 111.295 226.241 118.513 224.893 123.844C222.356 135.429 220.168 147.767 218.029 159.827C217.266 164.127 216.51 168.393 215.746 172.576C215.149 175.036 214.744 177.539 214.536 180.063C209.293 177.212 189.013 163.178 168.324 148.861C144.166 132.142 119.45 115.039 117.476 114.911L117.364 115.307C119.313 119.36 123.473 125.003 127.189 130.044C129.015 132.522 130.734 134.854 132.031 136.78C142.782 152.598 153.699 168.302 164.781 183.89C166.281 186.021 167.946 188.44 169.689 190.973C174.164 197.476 179.155 204.729 183.198 209.784C175.935 211.284 168.607 212.471 161.284 213.657C155.62 214.574 149.958 215.491 144.333 216.551C133.054 218.679 121.737 220.685 110.426 222.69C99.5544 224.617 88.6862 226.544 77.8495 228.578L25.2818 238.093L9.87269 241.014C8.70454 241.237 7.65059 241.467 6.63306 241.689C4.49891 242.155 2.52494 242.586 0 242.835C5.59793 244.438 10.6885 245.291 16.0433 246.19C17.7287 246.472 19.4404 246.759 21.2022 247.076L55.513 253.07C97.5925 260.562 139.766 267.518 182.023 273.931C180.173 276.974 176.667 281.554 173.815 285.281C172.941 286.423 172.123 287.491 171.438 288.404L152.721 313.496C146.305 322.078 139.968 330.721 133.71 339.419C131.727 342.208 129.704 345.089 127.658 348.004C123.117 354.472 118.469 361.092 113.969 367.121C120.571 362.895 127.075 358.363 133.558 353.847C136.228 351.987 138.898 350.127 141.566 348.295C160.115 335.415 178.788 322.712 197.582 310.194C199.601 308.857 201.818 307.304 204.077 305.723C207.621 303.241 211.266 300.689 214.406 298.785L243.011 458.021C243.234 459.194 243.48 460.365 243.725 461.536C244.273 464.15 244.821 466.767 245.132 469.413C245.398 471.666 245.841 473.843 246.282 476.01C246.929 479.187 247.571 482.344 247.642 485.69C249.123 480.798 249.936 475.902 250.751 471.001C251.102 468.887 251.454 466.772 251.859 464.655L261.144 413.735L276.16 331.982C276.775 328.584 277.453 325.095 278.137 321.571C279.627 313.9 281.15 306.066 282.124 298.653C283.625 299.997 286.889 302.228 289.34 303.902C290.023 304.369 290.642 304.792 291.143 305.141L308.768 317.453L355.221 350.028C356.311 350.79 357.653 351.746 359.155 352.815C366.001 357.689 376.167 364.925 380.941 367.028C377.003 362.298 372.414 355.839 368.218 349.933C366.561 347.602 364.965 345.356 363.495 343.337L331.425 298.815L317.625 279.34C317.378 278.985 313.855 274.166 313.639 273.943C314.115 273.559 324.713 271.728 326.118 271.487L495.846 243.014C487.544 241.119 479.808 239.786 471.955 238.432C467.953 237.742 463.921 237.047 459.769 236.27L394.34 224.385L343.838 215.305C342.472 215.047 341.091 214.761 339.702 214.473C336.658 213.843 333.579 213.205 330.552 212.848C327.519 212.49 324.518 211.873 321.522 211.257C318.208 210.576 314.9 209.895 311.565 209.57C315.291 203.662 320.659 196.328 325.434 189.804C326.95 187.732 328.408 185.74 329.734 183.903L355.155 148.088L370.834 125.738C371.357 124.988 371.954 124.107 372.598 123.158C374.978 119.648 377.99 115.205 380.158 113.066C376.498 114.802 370.819 118.842 367.193 121.421L366.681 121.785C361.487 125.494 356.272 129.172 351.034 132.82L281.374 181.714C281.243 178.253 280.681 175.463 280.076 172.46C279.796 171.07 279.506 169.632 279.247 168.063L273.389 134.618L256.503 41.3973C255.818 37.6842 255.057 33.9753 254.296 30.2641C253.092 24.3931 251.887 18.5163 250.977 12.6076ZM313.639 273.943C313.627 273.931 313.63 273.928 313.639 273.943ZM225.243 134.08C225.714 131.92 226.184 129.768 226.554 127.39C227.532 121.129 228.921 114.209 230.262 107.525C230.874 104.476 231.476 101.475 232.025 98.6079L238.475 64.2328L244.529 32.2582C244.798 30.8912 245.042 29.5836 245.28 28.3056C246.008 24.3945 246.685 20.7606 247.89 16.5506C248.176 20.1454 248.104 25.0922 248.04 29.4635C248.018 30.9894 247.997 32.4454 247.992 33.7491C247.947 43.3465 247.959 52.944 248.022 62.5411L248.279 183.705L248.189 219.88C248.176 221.569 248.14 223.476 248.102 225.477C247.999 230.899 247.882 237.013 248.183 241.383C246.436 240.179 244.931 238.691 243.41 237.187C242.863 236.647 242.315 236.105 241.753 235.573C236.787 230.84 231.868 226.06 226.995 221.233C226.015 220.278 224.596 218.939 222.997 217.431C218.898 213.565 213.62 208.589 211.567 206.127C212.279 202.07 213.192 197.722 214.113 193.34C215.368 187.368 216.636 181.333 217.425 175.885L224.22 139.058C224.534 137.328 224.889 135.701 225.243 134.08ZM275.263 241.957C273.497 241.962 271.714 241.96 269.923 241.957C263.091 241.95 256.13 241.941 249.432 242.288C253.771 238.126 258.036 233.907 262.3 229.688C267.151 224.887 272.009 220.081 276.966 215.368C277.667 214.702 278.463 213.985 279.289 213.24C281.466 211.277 283.864 209.114 285.361 207.139C286.529 207.238 288.384 207.643 290.086 208.014C291 208.214 291.871 208.404 292.565 208.531L309.697 211.516C322.26 213.583 334.398 215.79 346.919 218.075L380.549 224.091L446.785 236.034L466.331 239.582C467.268 239.745 468.257 239.906 469.273 240.072C472.617 240.616 476.246 241.207 479.219 242.059C476.176 242.346 471.763 242.276 468.022 242.217C466.896 242.199 465.83 242.182 464.882 242.176L313.923 241.898L275.263 241.957ZM138.454 264.935C134.911 264.388 131.53 263.866 127.628 263.039L50.9765 250.121L32.2035 246.822C31.5343 246.71 30.6572 246.577 29.6616 246.426C25.6974 245.825 19.8415 244.937 17.6279 243.965L17.8532 243.714C19.8229 243.381 24.6498 243.44 28.015 243.48C28.9418 243.492 29.7588 243.502 30.3735 243.502L126.565 242.817C129.543 242.787 132.522 242.781 135.502 242.774C140.362 242.765 145.224 242.755 150.08 242.638C169.959 242.441 189.841 242.45 209.721 242.659C212.827 242.704 216.16 242.792 219.587 242.883C228.563 243.119 238.197 243.373 246.181 242.928C245.217 244.16 243.18 245.985 241.378 247.6C240.505 248.382 239.686 249.116 239.071 249.708C232.371 256.184 225.609 262.594 218.784 268.938C218.413 269.288 217.96 269.706 217.459 270.169C215.289 272.174 212.222 275.009 211.087 276.66C208.979 276.464 206.896 276.021 204.854 275.587C203.129 275.221 201.433 274.86 199.776 274.66C195.495 274.146 191.336 273.435 187.18 272.725C184.748 272.309 182.314 271.893 179.859 271.517L143.683 265.767C141.853 265.461 140.135 265.195 138.454 264.935ZM252.02 451.988C251.698 453.785 251.465 455.436 251.241 457.024C250.714 460.763 250.236 464.153 248.751 468.283C248.481 464.452 248.571 458.11 248.65 452.548C248.687 449.924 248.722 447.473 248.715 445.542L248.551 400.35L248.608 301.089C248.609 295.281 248.653 289.31 248.699 283.284C248.798 270.044 248.899 256.535 248.542 243.887C249.479 244.358 253.354 248.222 255.005 249.869L255.013 249.877C255.223 250.086 255.396 250.259 255.523 250.384L270.153 264.59C270.678 265.103 271.498 265.936 272.487 266.941C276.179 270.696 282.235 276.852 284.156 277.726C282.917 282.009 282.428 285.126 281.883 288.596C281.606 290.362 281.314 292.221 280.902 294.371C279.218 303.152 277.673 311.989 276.129 320.818C274.795 328.44 273.462 336.062 272.042 343.639L259.533 411.784L256.458 428.652C256.226 429.861 255.969 431.017 255.714 432.161C255.251 434.243 254.796 436.286 254.518 438.529C254.093 441.35 253.558 444.052 253.02 446.766C252.679 448.491 252.336 450.22 252.02 451.988ZM347.203 137.819C349.743 136.043 352.309 134.285 354.876 132.527C359.359 129.458 363.845 126.385 368.208 123.202L368.498 123.669L368.463 123.719C368.304 123.951 368.037 124.338 367.876 124.498C363.66 128.748 359.138 132.857 354.629 136.954C350.952 140.294 347.285 143.626 343.799 147.02L302.173 188.335C298.392 192.014 294.636 195.715 290.898 199.437C290.607 199.73 290.214 200.18 289.769 200.69C288.476 202.174 286.739 204.165 285.761 204.279C285.257 203.781 285.252 203.626 285.236 203.067C285.231 202.878 285.224 202.642 285.196 202.331C284.777 199.256 284.162 196.127 283.558 193.052C282.885 189.624 282.225 186.263 281.864 183.125C284.219 182.218 287.428 179.859 290.092 177.9C290.89 177.313 291.64 176.762 292.302 176.297L307.943 165.371L347.203 137.819ZM181.018 319.144C176.136 322.472 171.235 325.78 166.332 329.089C153.055 338.048 139.767 347.016 126.82 356.411C126.677 356.495 126.523 356.589 126.361 356.688C125.62 357.14 124.726 357.686 124.021 357.803C130.892 350.841 137.306 344.847 144.192 338.411C145.603 337.092 147.034 335.755 148.492 334.387C157.578 325.691 166.765 317.103 176.051 308.622C179.745 305.228 183.504 301.716 187.288 298.179C194.538 291.403 201.882 284.54 209.043 278.258C209.836 278.315 210.85 278.491 210.988 279.451C211.872 285.577 212.805 291.266 214.456 297.258C211.46 298.013 193.275 310.642 184.732 316.575C183.066 317.732 181.767 318.634 181.018 319.144ZM195.523 207.844C192.106 208.518 188.656 209.199 184.812 209.55C183.871 207.707 181.867 204.916 180.236 202.646C179.733 201.945 179.264 201.292 178.874 200.733C174.546 194.499 170.165 188.302 165.731 182.143C156.594 169.14 147.524 156.09 138.522 142.993C136.958 140.727 135.249 138.325 133.516 135.889C130.516 131.672 127.444 127.353 124.922 123.462C126.238 123.771 130.054 127.807 132.435 130.327C133.121 131.053 133.688 131.652 134.042 132.001C141.131 138.944 148.161 145.948 155.131 153.012L207.71 205.974L204.917 206.287C201.638 206.639 198.594 207.239 195.523 207.844ZM288.654 277.526C293.893 277.28 298.911 276.306 303.952 275.327C306.375 274.857 308.803 274.386 311.263 273.994L311.789 274.245C312.998 276.164 314.946 278.817 316.694 281.198C317.482 282.271 318.232 283.293 318.853 284.163L332.788 303.73C342.123 316.876 351.557 329.95 361.087 342.955C362.554 344.976 363.973 346.983 365.389 348.986C367.471 351.931 369.548 354.869 371.77 357.839C368.51 355.516 366.371 353.218 364.12 350.801C362.815 349.4 361.472 347.958 359.852 346.448C353.788 341.015 347.66 334.929 341.651 328.961C338.937 326.267 336.243 323.59 333.597 321.018L288.654 277.526Z" fill="currentColor"/>
+</svg></span>
+              <div>
+                <span>OPERACIÓN PERLA NEGRA</span>
+                <small>RALLY · ACTIVIDAD 04</small>
+              </div>
+            </div>
+            <div class="system-status">
+              <span class="status-dot"></span>
+              <span>${label}</span>
+              <span class="step-count">${step}</span>
+            </div>
+          </header>
+          ${body}
+        </div>
+        <footer class="global-footer">
+          <span>RED PRIVADA / CONEXIÓN CIFRADA</span>
+          <span>04 — HACKEO AL COMPUTADOR</span>
+        </footer>
+      </main>`;
+  }
+
+  /* ---------- Contenido de los archivos ---------- */
+
+  function fileContents(id) {
+    if (id === "jewel") {
+      return `
+        <div class="file-document">
+          <div class="inventory-hero">
+            <span>INVENTARIO</span>
+            <strong>27</strong>
+          </div>
+          <div class="document-grid">
+            <p><span>PIEZA</span>Perla Negra</p>
+            <p><span>CLASIFICACIÓN</span>Joya patrimonial</p>
+            <p><span>PROCEDENCIA</span>Colección Valcárcel</p>
+            <p><span>ESTADO</span>Bajo custodia</p>
+          </div>
+          <p class="document-note">
+            Pieza central de la colección. Cualquier traslado requiere autorización directa del Curador.
+          </p>
+        </div>`;
+    }
+
+    if (id === "transfer") {
+      return `
+        <div class="file-document">
+          <div class="transfer-route">
+            <div>
+              <span>ORIGEN</span>
+              <strong>Archivo central</strong>
+            </div>
+            ${icon.arrow()}
+            <div>
+              <span>DESTINO</span>
+              <strong>Bloque D</strong>
+            </div>
+          </div>
+          <div class="log-rows">
+            <div><span>21:40:18</span><p>Contenedor sellado y verificado.</p><b>OK</b></div>
+            <div><span>22:05:04</span><p>Ingreso por corredor de servicio.</p><b>OK</b></div>
+            <div><span>22:18:39</span><p>Custodia transferida a A. Valcárcel.</p><b>OK</b></div>
+          </div>
+          <p class="document-note">El destino final no fue registrado en la bitácora principal.</p>
+        </div>`;
+    }
+
+    return `
+      <div class="file-document blueprint-document">
+        <div class="coordinates">
+          <div>
+            <span>EJE X</span>
+            <strong>9</strong>
+          </div>
+          <div class="coordinate-cross">+</div>
+          <div>
+            <span>EJE Y</span>
+            <strong>−15</strong>
+          </div>
+        </div>
+        <div class="map-grid" aria-label="Representación del plano maestro">
+          <span class="axis axis-x">X</span>
+          <span class="axis axis-y">Y</span>
+          <span class="target-point"></span>
+          <span class="target-label">PUNTO DE ACCESO</span>
+        </div>
+        <p class="document-note">
+          Coordenadas marcadas para localizar el siguiente punto de la operación.
+        </p>
+      </div>`;
+  }
+
+  /* ---------- Pantallas ---------- */
+
+  function briefingScreen() {
+    return frame({
+      label: "CANAL SEGURO",
+      step: "01 / 07",
+      body: `
+        <section class="briefing-screen screen-enter">
+          <div class="message-index">MENSAJE INTERCEPTADO · 04</div>
+          <div class="briefing-copy">
+            <span class="eyebrow">DE: EL ARQUITECTO</span>
+            <h1>Hay algo oculto<br />en el Bloque D.</h1>
+            <div class="gold-rule"></div>
+            <p>
+              Valcárcel guarda sus movimientos en un computador privado. Entra sin dejar rastro,
+              recupera las coordenadas y descubre dónde continúa la operación.
+            </p>
+            <p class="signature">— El Arquitecto</p>
+            ${actionButton(`CONTINUAR ${icon.arrow()}`, "go-locked")}
+          </div>
+          <div class="briefing-code" aria-hidden="true">
+            <span>D</span>
+            <p>BLOQUE<br />RESTRINGIDO</p>
+          </div>
+        </section>`,
+    });
+  }
+
+  function lockedScreen() {
+    return frame({
+      label: "PC BLOQUEADO",
+      step: "02 / 07",
+      compact: true,
+      body: `
+        <section class="entry-screen lock-screen screen-enter" data-action="go-users" role="button" tabindex="0">
+          <div class="entry-texture"></div>
+          <div class="lock-time">
+            <strong>22:18</strong>
+            <span>Jueves, 24 de octubre</span>
+          </div>
+          <div class="lock-status">
+            ${icon.lock()}
+            <span>ESTACIÓN PRIVADA · BLOQUE D</span>
+          </div>
+          <div class="click-prompt">
+            <span class="terminal-cursor"></span>
+            HAZ CLIC PARA CONTINUAR
+          </div>
+        </section>`,
+    });
+  }
+
+  function usersScreen() {
+    const choices = USERS.map(
+      (user, i) => `
+        <button class="user-choice" data-action="select-user" data-index="${i}">
+          <span class="user-avatar">${user.initials}</span>
+          <strong>${esc(user.name)}</strong>
+          <small>${user.role}</small>
+        </button>`,
+    ).join("");
+
+    return frame({
+      label: "SELECCIÓN DE USUARIO",
+      step: "03 / 07",
+      compact: true,
+      body: `
+        <section class="entry-screen users-screen screen-enter">
+          <div class="entry-texture"></div>
+          <div class="users-heading">
+            <span class="eyebrow">PERLA OS · CUENTAS LOCALES</span>
+            <h1>¿Quién está ingresando?</h1>
+            <p>Selecciona un usuario para continuar.</p>
+          </div>
+          <div class="user-list">${choices}</div>
+          <button class="entry-back" data-action="go-locked" type="button">
+            ${icon.arrow("left")} VOLVER
+          </button>
+        </section>`,
+    });
+  }
+
+  function loginScreen() {
+    const { selectedUser: user, error, attempts } = state;
+    const visibleClues = Math.min(Math.floor(attempts / 2), CLUES.length);
+    const idError = error === "id" || error === "both";
+    const pwError = error === "password" || error === "both";
+
+    const feedback =
+      error === "both"
+        ? "ID y contraseña incorrectos"
+        : error === "id"
+          ? "ID de acceso incorrecto"
+          : error === "password"
+            ? "Contraseña incorrecta"
+            : "Ingresa el ID asignado y la contraseña de acceso.";
+
+    const helperPanel = state.helperOpen
+      ? `
+        <aside class="assistant-panel">
+          <div class="assistant-title">
+            <div>
+              <span>ASISTENTE DE ACCESO</span>
+              <strong>Ayudas disponibles</strong>
+            </div>
+            <button aria-label="Cerrar asistente" data-action="close-helper" type="button">×</button>
+          </div>
+          <div class="assistant-body">
+            ${
+              visibleClues === 0
+                ? `<p>Realiza dos intentos para desbloquear la primera ayuda. Las pistas se conservarán durante la sesión.</p>`
+                : `<ol>${CLUES.slice(0, visibleClues)
+                    .map(
+                      (clue, i) => `
+                        <li>
+                          <span>${pad(i + 1)}</span>
+                          <p><strong>DESPUÉS DE ${CLUE_MILESTONES[i]} INTENTOS</strong>${clue}</p>
+                        </li>`,
+                    )
+                    .join("")}</ol>`
+            }
+          </div>
+        </aside>`
+      : "";
+
+    return frame({
+      label: "ACCESO RESTRINGIDO",
+      step: "04 / 07",
+      compact: true,
+      body: `
+        <section class="entry-screen password-screen screen-enter">
+          <div class="entry-texture"></div>
+          <div class="password-login">
+            <div class="login-avatar">${user.initials}</div>
+            <span class="account-type">${user.role}</span>
+            <h1>${esc(user.name)}</h1>
+            <form id="login-form" novalidate>
+              <label class="sr-only" for="access-id">ID de acceso</label>
+              <div class="password-control rounded-password id-control ${idError ? "password-control--error password-shake" : ""}">
+                <input
+                  autocapitalize="characters"
+                  autocomplete="off"
+                  id="access-id"
+                  placeholder="ID de acceso"
+                  spellcheck="false"
+                  type="text"
+                  value="${esc(state.accessId)}"
+                />
+              </div>
+
+              <label class="sr-only" for="password">Contraseña</label>
+              <div class="password-control rounded-password ${pwError ? "password-control--error password-shake" : ""}">
+                <input
+                  autocomplete="off"
+                  id="password"
+                  placeholder="Contraseña"
+                  spellcheck="false"
+                  type="password"
+                  value="${esc(state.password)}"
+                />
+                <button aria-label="Ingresar al computador" type="submit">${icon.arrow()}</button>
+              </div>
+
+              <div class="password-feedback" aria-live="polite">${feedback}</div>
+              <div class="password-help-summary" aria-live="polite">
+                <div>
+                  <span>AYUDA DE CONTRASEÑA</span>
+                  <strong>${visibleClues} / 4 REVELADAS</strong>
+                </div>
+                <p>${visibleClues > 0 ? CLUES[visibleClues - 1] : "La primera ayuda aparecerá después de 2 intentos."}</p>
+              </div>
+              <div class="attempt-row">
+                <span>INTENTOS ILIMITADOS</span>
+                <span>${pad(attempts)} INTENTOS</span>
+              </div>
+            </form>
+            <button class="switch-user" data-action="go-users" type="button">CAMBIAR DE USUARIO</button>
+          </div>
+          <div class="access-assistant">
+            ${helperPanel}
+            <button
+              aria-expanded="${state.helperOpen}"
+              aria-label="Abrir asistente de acceso"
+              class="assistant-trigger"
+              data-action="toggle-helper"
+              type="button"
+            >?</button>
+            <span>ASISTENTE DE ACCESO</span>
+          </div>
+        </section>`,
+    });
+  }
+
+  function authorizedScreen() {
+    return frame({
+      label: "IDENTIDAD VALIDADA",
+      step: "05 / 07",
+      compact: true,
+      body: `
+        <section class="entry-screen authorized-screen screen-enter">
+          <div class="entry-texture"></div>
+          <div class="authorization-content">
+            <div class="animated-check">
+              <svg aria-hidden="true" fill="none" viewBox="0 0 64 64"><path d="m16 33 11 11 23-27"/></svg>
+            </div>
+            <span class="eyebrow">IDENTIDAD CONFIRMADA</span>
+            <h1>ACCESO AUTORIZADO</h1>
+            <p>Iniciando el escritorio privado de ${esc(state.selectedUser.name)}</p>
+            <div class="loading-track"><span></span></div>
+            <div class="authorization-code">CARGANDO SESIÓN CONFIDENCIAL</div>
+          </div>
+        </section>`,
+    });
+  }
+
+  function desktopScreen() {
+    const { viewedFiles, activeFile } = state;
+    const selected = FILES.find((file) => file.id === activeFile);
+
+    const folders = FILES.map(
+      (file) => `
+        <button
+          class="desktop-folder ${file.featured ? "desktop-folder--featured" : ""}"
+          data-action="open-file"
+          data-file="${file.id}"
+          title="Doble clic para abrir"
+        >
+          <span class="desktop-folder-icon">${icon.folder()}<i>${file.index}</i></span>
+          <strong>${file.name}</strong>
+          <small>${viewedFiles.includes(file.id) ? "REVISADO" : file.meta}</small>
+        </button>`,
+    ).join("");
+
+    const windowHTML = selected
+      ? `
+        <div class="window-overlay" role="dialog" aria-modal="true" aria-labelledby="file-title">
+          <div class="file-window">
+            <div class="window-bar">
+              <div>
+                <span>${selected.index}</span>
+                <p>${selected.meta}</p>
+              </div>
+              <button aria-label="Cerrar archivo" data-action="close-file" type="button">CERRAR <span>×</span></button>
+            </div>
+            <div class="window-content">
+              <div class="window-title">
+                <span class="eyebrow">ARCHIVO PRIVADO / ${selected.index}</span>
+                <h1 id="file-title">${selected.name}</h1>
+              </div>
+              ${fileContents(selected.id)}
+            </div>
+            <button class="window-back" data-action="close-file" type="button">
+              ${icon.arrow("left")} VOLVER AL ESCRITORIO
+            </button>
+          </div>
+        </div>`
+      : "";
+
+    return frame({
+      label: "SESIÓN PRIVADA ACTIVA",
+      step: "06 / 07",
+      body: `
+        <section class="night-desktop screen-enter">
+          <img alt="" aria-hidden="true" class="desktop-wallpaper" src="assets/museum-wallpaper.png" />
+          <div class="desktop-topbar">
+            <div><span class="status-dot"></span>PERLA OS · SESIÓN CONFIDENCIAL</div>
+            <div class="desktop-progress">ARCHIVOS REVISADOS <strong>${viewedFiles.length} / 3</strong></div>
+            <div>RED CIFRADA · 22:18</div>
+          </div>
+          <div class="desktop-icon-column">${folders}</div>
+          <div class="desktop-instruction">
+            <span>+</span>
+            <p><strong>ARCHIVOS PRIVADOS</strong>Haz doble clic en una carpeta para abrirla.</p>
+          </div>
+          <div class="desktop-complete">
+            ${actionButton(`COMPLETAR ACTIVIDAD ${icon.arrow()}`, "complete", viewedFiles.length < 3)}
+          </div>
+          <div class="desktop-dock" aria-label="Dock del sistema">
+            <button aria-label="Inicio" class="dock-active" type="button">
+              <span class="dock-grid"><i></i><i></i><i></i><i></i></span>
+            </button>
+            <button aria-label="Archivos privados" type="button">${icon.folder()}</button>
+            <button aria-label="Seguridad" type="button">${icon.lock(true)}</button>
+            <button aria-label="Ubicación" type="button">
+              <svg aria-hidden="true" fill="none" viewBox="0 0 32 32">
+                <circle cx="16" cy="16" r="11"/>
+                <path d="m20 11-2.5 6.5L11 20l2.5-6.5L20 11Z"/>
+              </svg>
+            </button>
+            <button aria-label="Sistema" type="button"><span class="dock-power"></span></button>
+          </div>
+        </section>
+        ${windowHTML}`,
+    });
+  }
+
+  function completeScreen() {
+    return frame({
+      label: "INTERVENCIÓN FINALIZADA",
+      step: "07 / 07",
+      compact: true,
+      body: `
+        <section class="complete-screen screen-enter">
+          <div class="completion-index">04</div>
+          <div class="completion-copy">
+            <span class="eyebrow">OPERACIÓN PERLA NEGRA · RALLY</span>
+            <h1>Actividad 04<br />completada</h1>
+            <div class="gold-rule"></div>
+            <p>
+              Las coordenadas fueron recuperadas. Usa el <strong>plano del kit de supervivencia</strong>
+              para localizar el siguiente punto.
+            </p>
+            <div class="final-coordinates">
+              <span>X: 9</span>
+              <i>/</i>
+              <span>Y: −15</span>
+            </div>
+            ${actionButton(`CONTINUAR EL RALLY ${icon.arrow()}`, "restart")}
+          </div>
+        </section>`,
+    });
+  }
+
+  function screenHTML() {
+    switch (state.screen) {
+      case "locked":
+        return lockedScreen();
+      case "users":
+        return usersScreen();
+      case "login":
+        return loginScreen();
+      case "authorized":
+        return authorizedScreen();
+      case "desktop":
+        return desktopScreen();
+      case "complete":
+        return completeScreen();
+      default:
+        return briefingScreen();
+    }
+  }
+
+  /* ---------- Render y navegación ---------- */
+
+  function render() {
+    // Conserva el foco y el cursor de los campos al re-renderizar
+    const active = document.activeElement;
+    const restore =
+      active && active.id
+        ? { id: active.id, start: active.selectionStart, end: active.selectionEnd }
+        : null;
+
+    root.innerHTML = screenHTML();
+
+    const targetId = pendingFocus || (restore && restore.id);
+    pendingFocus = null;
+    if (targetId) {
+      const el = document.getElementById(targetId);
+      if (el) {
+        el.focus();
+        if (restore && restore.id === targetId && el.setSelectionRange && restore.start !== null) {
+          el.setSelectionRange(restore.start, restore.end);
+        }
+      }
+    }
+  }
+
+  function go(screen) {
+    state.screen = screen;
+    if (authTimer) {
+      clearTimeout(authTimer);
+      authTimer = null;
+    }
+    if (screen === "authorized") {
+      authTimer = setTimeout(() => {
+        authTimer = null;
+        state.screen = "desktop";
+        render();
+      }, 2400);
+    }
+    if (screen === "login") pendingFocus = "access-id";
+    render();
+  }
+
+  function handleLogin() {
+    const idIsValid = state.accessId === ACCESS_ID;
+    const passwordIsValid = state.password === PASSWORD;
+
+    if (idIsValid && passwordIsValid) {
+      state.error = null;
+      go("authorized");
+      return;
+    }
+
+    state.error = !idIsValid && !passwordIsValid ? "both" : idIsValid ? "password" : "id";
+    if (!passwordIsValid) {
+      state.attempts += 1;
+      state.helperOpen = true;
+      state.password = "";
+    }
+    pendingFocus = idIsValid ? "password" : "access-id";
+    render();
+  }
+
+  function openFile(id) {
+    state.activeFile = id;
+    if (!state.viewedFiles.includes(id)) state.viewedFiles.push(id);
+    render();
+  }
+
+  /* ---------- Eventos (delegados en #root) ---------- */
+
+  root.addEventListener("click", (event) => {
+    const el = event.target.closest("[data-action]");
+    if (!el || el.disabled) return;
+
+    switch (el.dataset.action) {
+      case "go-locked":
+        go("locked");
+        break;
+      case "go-users":
+        go("users");
+        break;
+      case "select-user":
+        state.selectedUser = USERS[Number(el.dataset.index)];
+        go("login");
+        break;
+      case "toggle-helper":
+        state.helperOpen = !state.helperOpen;
+        render();
+        break;
+      case "close-helper":
+        state.helperOpen = false;
+        render();
+        break;
+      case "close-file":
+        state.activeFile = null;
+        render();
+        break;
+      case "complete":
+        go("complete");
+        break;
+      case "restart":
+        go("briefing");
+        break;
+      default:
+        // "open-file" se abre con doble clic o Enter, no con un clic simple
+        break;
+    }
+  });
+
+  root.addEventListener("dblclick", (event) => {
+    const el = event.target.closest('[data-action="open-file"]');
+    if (el) openFile(el.dataset.file);
+  });
+
+  root.addEventListener("keydown", (event) => {
+    const el = event.target;
+    if (event.key === "Enter" && el.matches('[data-action="open-file"]')) {
+      event.preventDefault();
+      openFile(el.dataset.file);
+      return;
+    }
+    if ((event.key === "Enter" || event.key === " ") && el.matches('[data-action="go-users"]')) {
+      event.preventDefault();
+      go("users");
+    }
+  });
+
+  root.addEventListener("input", (event) => {
+    const el = event.target;
+    if (el.id === "access-id") state.accessId = el.value;
+    else if (el.id === "password") state.password = el.value;
+    else return;
+
+    // Solo re-renderiza si hay que quitar un error visible
+    if (state.error) {
+      state.error = null;
+      render();
+    }
+  });
+
+  root.addEventListener("submit", (event) => {
+    if (event.target.id !== "login-form") return;
+    event.preventDefault();
+    handleLogin();
+  });
+
+  render();
+})();

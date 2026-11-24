@@ -20,7 +20,7 @@
       id: "blueprint",
       index: "03",
       name: "Plano maestro",
-      meta: "UBICACIÓN · X: 8 / Y: Censurado",
+      meta: "UBICACIÓN · X: 6 / Y: Censurado",
       featured: true,
     },
   ];
@@ -156,7 +156,7 @@
         <div class="coordinates">
           <div>
             <span>EJE X</span>
-            <strong>8</strong>
+            <strong>6</strong>
           </div>
           <div class="coordinate-cross">+</div>
           <div>
@@ -463,7 +463,7 @@
               para localizar el siguiente punto.
             </p>
             <div class="final-coordinates">
-              <span>X: 8</span>
+              <span>X: 6</span>
               <i>/</i>
               <span>Y: Censurado</span>
             </div>

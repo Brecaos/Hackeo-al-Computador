@@ -20,7 +20,7 @@
       id: "blueprint",
       index: "03",
       name: "Plano maestro",
-      meta: "UBICACIÓN · X: 9 / Y: −15",
+      meta: "UBICACIÓN · X: 8 / Y: Censurado",
       featured: true,
     },
   ];
@@ -161,7 +161,7 @@
           <div class="coordinate-cross">+</div>
           <div>
             <span>EJE Y</span>
-            <strong>6</strong>
+            <strong>Censurado</strong>
           </div>
         </div>
         <div class="map-grid" aria-label="Representación del plano maestro">
@@ -463,9 +463,9 @@
               para localizar el siguiente punto.
             </p>
             <div class="final-coordinates">
-              <span>X: 9</span>
+              <span>X: 8</span>
               <i>/</i>
-              <span>Y: −15</span>
+              <span>Y: Censurado</span>
             </div>
             ${actionButton(`CONTINUAR EL RALLY ${icon.arrow()}`, "restart")}
           </div>

@@ -27,12 +27,12 @@
 
   const USERS = [
     { name: "Adrián Valcárcel", initials: "AV", role: "CURADOR" },
-    { name: "Clara Montalvo", initials: "CM", role: "INVITADA" },
+    { name: "Daniel Santamaría", initials: "DS", role: "SOCIO" },
     { name: "Otro usuario", initials: "···", role: "CUENTA LOCAL" },
   ];
 
   const state = {
-    screen: "briefing",
+    screen: "locked",
     selectedUser: USERS[0],
     accessId: "",
     password: "",
@@ -177,32 +177,6 @@
   }
 
   /* ---------- Pantallas ---------- */
-
-  function briefingScreen() {
-    return frame({
-      label: "CANAL SEGURO",
-      step: "01 / 07",
-      body: `
-        <section class="briefing-screen screen-enter">
-          <div class="message-index">MENSAJE INTERCEPTADO · 04</div>
-          <div class="briefing-copy">
-            <span class="eyebrow">DE: EL ARQUITECTO</span>
-            <h1>Hay algo oculto<br />en el Bloque D.</h1>
-            <div class="gold-rule"></div>
-            <p>
-              Valcárcel guarda sus movimientos en un computador privado. Entra sin dejar rastro,
-              recupera las coordenadas y descubre dónde continúa la operación.
-            </p>
-            <p class="signature">— El Arquitecto</p>
-            ${actionButton(`CONTINUAR ${icon.arrow()}`, "go-locked")}
-          </div>
-          <div class="briefing-code" aria-hidden="true">
-            <span>D</span>
-            <p>BLOQUE<br />RESTRINGIDO</p>
-          </div>
-        </section>`,
-    });
-  }
 
   function lockedScreen() {
     return frame({
@@ -514,7 +488,7 @@
       case "complete":
         return completeScreen();
       default:
-        return briefingScreen();
+        return lockedScreen();
     }
   }
 
@@ -619,7 +593,7 @@
         go("complete");
         break;
       case "restart":
-        go("briefing");
+        go("locked");
         break;
       default:
         // "open-file" se abre con doble clic o Enter, no con un clic simple

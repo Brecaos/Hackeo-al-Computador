@@ -134,12 +134,12 @@
           <div class="transfer-route">
             <div>
               <span>ORIGEN</span>
-              <strong>Archivo central</strong>
+              <strong>Bodega de Alcárcel</strong>
             </div>
             ${icon.arrow()}
             <div>
               <span>DESTINO</span>
-              <strong>Bloque D</strong>
+              <strong>Museo del Oro</strong>
             </div>
           </div>
           <div class="log-rows">
@@ -156,12 +156,12 @@
         <div class="coordinates">
           <div>
             <span>EJE X</span>
-            <strong>9</strong>
+            <strong>8</strong>
           </div>
           <div class="coordinate-cross">+</div>
           <div>
             <span>EJE Y</span>
-            <strong>−15</strong>
+            <strong>6</strong>
           </div>
         </div>
         <div class="map-grid" aria-label="Representación del plano maestro">
